@@ -61,7 +61,7 @@ export default function AuthForm() {
     const supabase = createClient();
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     const { error } = await supabase.auth.resetPasswordForEmail(emailToUse, {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+      redirectTo: `${origin}/auth/reset-password?next=${encodeURIComponent(redirectTo)}`,
     });
     setForgotPasswordLoading(false);
     if (error) {

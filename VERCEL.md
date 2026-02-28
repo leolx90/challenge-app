@@ -100,9 +100,9 @@ So that “Sign in” and “Sign up” redirect back to your Vercel URL (and no
    - **Redirect URLs:** in the text box, add these (one per line or comma-separated, depending on the UI):
      - `https://challenge-app-xxxx.vercel.app`
      - `https://challenge-app-xxxx.vercel.app/**`
-     - `https://challenge-app-xxxx.vercel.app/auth/callback`
-     - `https://challenge-app-xxxx.vercel.app/auth/callback/**`
-     Use your real Vercel URL instead of `challenge-app-xxxx`. The `/auth/callback` entries are needed for “Forgot password” reset links.
+     - `https://challenge-app-xxxx.vercel.app/auth/reset-password`
+     - `https://challenge-app-xxxx.vercel.app/auth/reset-password/**`
+     Use your real Vercel URL instead of `challenge-app-xxxx`. The `/auth/reset-password` entries are needed for “Forgot password” reset links.
 5. Click **Save**.
 
 Now try **Sign up** or **Sign in** on your live Vercel URL again. After logging in, you should land back on your app (e.g. home or onboarding).
