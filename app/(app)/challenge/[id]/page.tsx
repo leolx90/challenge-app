@@ -6,7 +6,7 @@ import {
   getCurrentUserProfile,
   isParticipant,
 } from "@/lib/db/challenges";
-import { countPeriods, getCurrentPeriodBounds, isInPeriod } from "@/lib/cadence";
+import { countPeriods, getCurrentPeriodBounds, isInPeriod, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -60,6 +60,31 @@ export default async function ChallengeDetailPage({
   const alreadyCheckedInThisPeriod = userCheckIns.some((c) =>
     isInPeriod(new Date(c.checked_in_at), periodStart, periodEnd)
   );
+  const cadence = challenge.cadence as Cadence;
+  const periodDays = CADENCE_DAYS[cadence];
+  const nextPeriodStart =
+    periodDays > 0
+      ? (() => {
+          const next = new Date(periodStart);
+          next.setDate(next.getDate() + periodDays);
+          return next;
+        })()
+      : null;
+  const endDate0 = new Date(endDate);
+  endDate0.setHours(23, 59, 59, 999);
+  const checkInsLeft = hasStarted
+    ? alreadyCheckedInThisPeriod && nextPeriodStart
+      ? countPeriods(nextPeriodStart, endDate0, cadence)
+      : countPeriods(periodStart, endDate0, cadence)
+    : countPeriods(startDate, endDate0, cadence);
+  const nextCheckInStartDate =
+    challenge.status === "completed"
+      ? null
+      : !hasStarted
+        ? challenge.start_date
+        : alreadyCheckedInThisPeriod && nextPeriodStart
+          ? nextPeriodStart.toISOString().slice(0, 10)
+          : null;
   const totalCommittedCents =
     (challenge.amount_cents ?? 0) * (participants?.length ?? 0);
   const totalCheckInCount = checkIns?.length ?? 0;
@@ -93,6 +118,8 @@ export default async function ChallengeDetailPage({
           totalCommittedCents={totalCommittedCents}
           payouts={payouts}
           isInviteView={false}
+          checkInsLeft={checkInsLeft}
+          nextCheckInStartDate={nextCheckInStartDate}
         />
       </div>
     </div>

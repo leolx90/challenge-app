@@ -37,6 +37,8 @@ export default function ChallengeDetail({
   isInviteView,
   canJoin,
   joinDisabledReason,
+  checkInsLeft,
+  nextCheckInStartDate,
 }: {
   challenge: Challenge;
   participants: Participant[];
@@ -51,6 +53,8 @@ export default function ChallengeDetail({
   isInviteView: boolean;
   canJoin?: boolean;
   joinDisabledReason?: string | null;
+  checkInsLeft?: number;
+  nextCheckInStartDate?: string | null;
 }) {
   const router = useRouter();
   const [checkingIn, setCheckingIn] = useState(false);
@@ -146,6 +150,47 @@ export default function ChallengeDetail({
         </div>
         {!isInviteView && (
           <>
+            <div>
+              <dt className="text-sm text-gray-500">Check-in cadence</dt>
+              <dd className="font-medium">
+                {challenge.cadence === "day"
+                  ? "Daily"
+                  : challenge.cadence === "week"
+                    ? "Weekly"
+                    : challenge.cadence === "two_weeks"
+                      ? "Every 2 weeks"
+                      : "Monthly"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-500">This period</dt>
+              <dd className="font-medium">
+                {hasCheckedInThisPeriod ? "Already checked in" : "Not yet checked in"}
+              </dd>
+            </div>
+            {checkInsLeft !== undefined && (
+              <div>
+                <dt className="text-sm text-gray-500">Check-ins left</dt>
+                <dd className="font-medium">{checkInsLeft}</dd>
+              </div>
+            )}
+            {nextCheckInStartDate !== undefined && nextCheckInStartDate !== null && (
+              <div>
+                <dt className="text-sm text-gray-500">Next check-in starts</dt>
+                <dd className="font-medium">
+                  {new Date(nextCheckInStartDate + "T00:00:00").toLocaleDateString(
+                    undefined,
+                    { dateStyle: "medium" }
+                  )}
+                </dd>
+              </div>
+            )}
+            {nextCheckInStartDate === null && !isCompleted && hasStarted && (
+              <div>
+                <dt className="text-sm text-gray-500">Next check-in starts</dt>
+                <dd className="font-medium">Now</dd>
+              </div>
+            )}
             <div>
               <dt className="text-sm text-gray-500">Total check-ins needed so far</dt>
               <dd className="font-medium">{totalCheckInsNeededSoFar}</dd>
