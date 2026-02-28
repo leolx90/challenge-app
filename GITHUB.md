@@ -131,12 +131,63 @@ git branch -M main
 git push -u origin main
 ```
 
-GitHub may ask you to log in:
+GitHub will **not** accept your normal account password. You must use a **Personal Access Token** (see below). When Git asks:
 
-- If it opens a browser, sign in to GitHub and approve.
-- If it asks for username and password: use your GitHub **username** and a **Personal Access Token** (not your account password). To create a token: GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Generate new token**, give it a name, check “repo,” then paste the token when Git asks for a password.
+- **Username:** your GitHub username (e.g. `leolx90`)
+- **Password:** paste your **Personal Access Token** (not your GitHub password)
 
 When it finishes, you should see something like: `Branch 'main' set up to track remote branch 'main' from 'origin'.`
+
+---
+
+## If you see: "Password authentication is not supported" or "Invalid username or token"
+
+GitHub no longer allows account passwords for Git. Use a **Personal Access Token** as your password.
+
+### Create a token
+
+1. On GitHub, click your **profile picture** (top right) → **Settings**.
+2. In the left sidebar, scroll down and click **Developer settings**.
+3. Click **Personal access tokens** → **Tokens (classic)**.
+4. Click **Generate new token** → **Generate new token (classic)**.
+5. Give it a name (e.g. `challenge-app push`).
+6. Set **Expiration** (e.g. 90 days or No expiration).
+7. Under **Scopes**, check **repo** (full control of private repositories).
+8. Click **Generate token** at the bottom.
+9. **Copy the token immediately** (it looks like `ghp_xxxxxxxxxxxx`). You won’t see it again.
+
+### Use the token when you push
+
+In the terminal, run again:
+
+```bash
+git push -u origin main
+```
+
+When prompted:
+
+- **Username:** your GitHub username (e.g. `leolx90`)
+- **Password:** paste the token you copied (you won’t see it as you paste—that’s normal)
+
+Push should succeed.
+
+### Save the token so you don’t type it every time (optional)
+
+**Mac:** Store it in the keychain:
+
+```bash
+git config --global credential.helper osxkeychain
+```
+
+Next time you push, enter username and token once; Mac will remember it.
+
+**Windows:** Use the Credential Manager:
+
+```bash
+git config --global credential.helper manager
+```
+
+After one successful push with your token, Windows will remember it.
 
 ---
 

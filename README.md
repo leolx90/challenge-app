@@ -42,7 +42,8 @@ If you’re new to Git/GitHub, see **[GITHUB.md](GITHUB.md)** for step-by-step i
 
 ## Deploy to a public server
 
-See **[DEPLOY.md](DEPLOY.md)** for step-by-step instructions to deploy on Vercel (or other hosts). You’ll add the same two env vars and configure your Supabase project URL for the live site.
+- **Vercel (recommended):** See **[VERCEL.md](VERCEL.md)** for a full step-by-step Vercel deployment guide.
+- **Other hosts:** See **[DEPLOY.md](DEPLOY.md)** for a short overview (Vercel, Netlify, Railway, etc.).
 
 ## Features
 
