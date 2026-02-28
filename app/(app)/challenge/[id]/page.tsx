@@ -54,7 +54,8 @@ export default async function ChallengeDetailPage({
   const userCheckIns = (checkIns ?? []).filter((c) => c.user_id === user.id);
   const { start: periodStart, end: periodEnd } = getCurrentPeriodBounds(
     today,
-    challenge.cadence as Cadence
+    challenge.cadence as Cadence,
+    challenge.start_date
   );
   const alreadyCheckedInThisPeriod = userCheckIns.some((c) =>
     isInPeriod(new Date(c.checked_in_at), periodStart, periodEnd)

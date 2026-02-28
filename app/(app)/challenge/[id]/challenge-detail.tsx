@@ -54,6 +54,7 @@ export default function ChallengeDetail({
 }) {
   const router = useRouter();
   const [checkingIn, setCheckingIn] = useState(false);
+  const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [joining, setJoining] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
@@ -61,16 +62,20 @@ export default function ChallengeDetail({
 
   const isCreator = challenge.creator_id === currentUserId;
   const isCompleted = challenge.status === "completed";
+  const hasCheckedInThisPeriod = alreadyCheckedInThisPeriod || justCheckedIn;
   const canCheckIn =
-    hasStarted && !isCompleted && !alreadyCheckedInThisPeriod && !isInviteView;
+    hasStarted && !isCompleted && !hasCheckedInThisPeriod && !isInviteView;
 
   async function doCheckIn() {
-    if (!hasStarted || alreadyCheckedInThisPeriod) return;
+    if (!hasStarted || hasCheckedInThisPeriod) return;
     setError(null);
     setCheckingIn(true);
     const { error: actionError } = await checkInAction(challenge.id);
     if (actionError) setError(actionError);
-    else router.refresh();
+    else {
+      setJustCheckedIn(true);
+      router.refresh();
+    }
     setCheckingIn(false);
   }
 
@@ -203,7 +208,7 @@ export default function ChallengeDetail({
                 {checkingIn ? "Checking in…" : "Check in"}
               </button>
             )}
-            {!canCheckIn && !isCompleted && !isInviteView && alreadyCheckedInThisPeriod && (
+            {!canCheckIn && !isCompleted && !isInviteView && hasCheckedInThisPeriod && (
               <button
                 type="button"
                 disabled

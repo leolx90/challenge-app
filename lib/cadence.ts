@@ -49,14 +49,22 @@ export function countPeriods(
   return Math.max(0, Math.ceil(diffDays / periodDays));
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Get the start and end of the current cadence period that contains `date`.
- * Used to check if user already checked in this period.
- * For "week" we use Sunday–Saturday; for "day" it's the single day; for "month" it's calendar month.
+ * Periods are aligned to the challenge start date:
+ * - day: single calendar day
+ * - week: 7-day block from start_date (period 0 = days 0–6, period 1 = days 7–13, …)
+ * - two_weeks: 14-day block from start_date
+ * - month: 30-day block from start_date
+ *
+ * @param challengeStartDate - YYYY-MM-DD; required for week, two_weeks, month.
  */
 export function getCurrentPeriodBounds(
   date: Date,
-  cadence: Cadence
+  cadence: Cadence,
+  challengeStartDate: string
 ): { start: Date; end: Date } {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -65,33 +73,18 @@ export function getCurrentPeriodBounds(
     return { start: new Date(d), end: new Date(d) };
   }
 
-  if (cadence === "week") {
-    const day = d.getDay(); // 0 = Sunday
-    const start = new Date(d);
-    start.setDate(d.getDate() - day);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-    return { start, end };
-  }
-
-  if (cadence === "two_weeks") {
-    const startOfYear = new Date(d.getFullYear(), 0, 1);
-    const dayOfYear = Math.floor(
-      (d.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000)
-    );
-    const periodIndex = Math.floor(dayOfYear / 14);
-    const start = new Date(startOfYear);
-    start.setDate(1 + periodIndex * 14);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 13);
-    end.setHours(23, 59, 59, 999);
-    return { start, end };
-  }
-
-  // month
-  const start = new Date(d.getFullYear(), d.getMonth(), 1);
-  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const startDate = new Date(challengeStartDate + "T00:00:00");
+  startDate.setHours(0, 0, 0, 0);
+  const daysSinceStart = Math.floor(
+    (d.getTime() - startDate.getTime()) / DAY_MS
+  );
+  const periodDays =
+    cadence === "week" ? 7 : cadence === "two_weeks" ? 14 : 30;
+  const periodIndex = Math.max(0, Math.floor(daysSinceStart / periodDays));
+  const start = new Date(startDate);
+  start.setDate(start.getDate() + periodIndex * periodDays);
+  const end = new Date(start);
+  end.setDate(start.getDate() + periodDays - 1);
   end.setHours(23, 59, 59, 999);
   return { start, end };
 }

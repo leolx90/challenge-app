@@ -210,7 +210,12 @@ export async function checkIn(challengeId: string) {
   if (challenge.start_date > today) return { error: new Error("Challenge has not started yet") };
 
   const now = new Date();
-  const { start, end } = getCurrentPeriodBounds(now, challenge.cadence as Cadence);
+  const { start, end } = getCurrentPeriodBounds(
+    now,
+    challenge.cadence as Cadence,
+    challenge.start_date
+  );
+  const periodStartDate = formatDateForDb(start);
 
   const { data: existing } = await supabase
     .from("check_ins")
@@ -225,8 +230,13 @@ export async function checkIn(challengeId: string) {
   const { error } = await supabase.from("check_ins").insert({
     challenge_id: challengeId,
     user_id: user.id,
+    period_start: periodStartDate,
   });
-  return { error };
+  if (error) {
+    if (error.code === "23505") return { error: new Error("Already checked in for this period") };
+    return { error };
+  }
+  return { error: undefined };
 }
 
 /**
