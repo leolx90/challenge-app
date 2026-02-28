@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { checkInAction } from "./actions";
 
 type Challenge = {
   id: string;
@@ -64,15 +65,11 @@ export default function ChallengeDetail({
     hasStarted && !isCompleted && !alreadyCheckedInThisPeriod && !isInviteView;
 
   async function doCheckIn() {
-    if (!hasStarted) return;
+    if (!hasStarted || alreadyCheckedInThisPeriod) return;
     setError(null);
     setCheckingIn(true);
-    const supabase = createClient();
-    const { error: insertError } = await supabase.from("check_ins").insert({
-      challenge_id: challenge.id,
-      user_id: currentUserId,
-    });
-    if (insertError) setError(insertError.message);
+    const { error: actionError } = await checkInAction(challenge.id);
+    if (actionError) setError(actionError);
     else router.refresh();
     setCheckingIn(false);
   }
@@ -212,7 +209,7 @@ export default function ChallengeDetail({
                 disabled
                 className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500"
               >
-                Check in (already done this period)
+                Checked in
               </button>
             )}
             {!canCheckIn && !isCompleted && !isInviteView && !hasStarted && (
