@@ -262,10 +262,29 @@ export default function ChallengeDetail({
                   const p = participants.find((x) => x.user_id === user_id);
                   const display =
                     p?.username?.trim() || p?.email || `${user_id.slice(0, 8)}…`;
+                  const committedCents = challenge.amount_cents;
+                  const deltaCents = payoutCents - committedCents;
+                  const deltaFormatted =
+                    deltaCents >= 0
+                      ? `+ $${(deltaCents / 100).toFixed(2)}`
+                      : `- $${Math.abs(deltaCents / 100).toFixed(2)}`;
                   return (
                     <li key={user_id} className="flex justify-between text-sm">
                       <span className="text-gray-800">{display}</span>
-                      <span>${(payoutCents / 100).toFixed(2)}</span>
+                      <span className="flex items-center gap-2">
+                        <span>${(payoutCents / 100).toFixed(2)}</span>
+                        <span
+                          className={
+                            deltaCents > 0
+                              ? "text-green-600"
+                              : deltaCents < 0
+                                ? "text-red-600"
+                                : "text-gray-500"
+                          }
+                        >
+                          ({deltaFormatted})
+                        </span>
+                      </span>
                     </li>
                   );
                 })}
