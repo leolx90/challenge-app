@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { IconLogOut } from "./icons";
 
 export default function SignOutButton() {
   const router = useRouter();
@@ -15,9 +16,11 @@ export default function SignOutButton() {
     <button
       type="button"
       onClick={handleSignOut}
-      className="text-sm text-gray-600 hover:text-gray-900"
+      title="Sign out"
+      aria-label="Sign out"
+      className="rounded p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
     >
-      Sign out
+      <IconLogOut />
     </button>
   );
 }

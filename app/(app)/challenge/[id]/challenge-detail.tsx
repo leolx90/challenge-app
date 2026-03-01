@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { checkInAction } from "./actions";
 import { getCurrentPeriodBounds, countPeriods, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
+import { IconShare, IconCheck, IconTrash } from "@/app/(app)/icons";
 
 type Challenge = {
   id: string;
@@ -188,32 +189,30 @@ export default function ChallengeDetail({
 
 
   return (
-    <div className="space-y-6 rounded border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{challenge.name}</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Status: <span className="font-medium capitalize">{challenge.status}</span>
-          </p>
-        </div>
+    <div className="space-y-6 rounded border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="min-w-0">
+        <h1 className="truncate text-xl font-bold text-gray-900 sm:text-2xl">{challenge.name}</h1>
+        <p className="mt-1 truncate text-sm text-gray-500">
+          Status: <span className="font-medium capitalize">{challenge.status}</span>
+        </p>
       </div>
 
       {error && (
         <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
       )}
 
-      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <dt className="text-sm text-gray-500">Start date</dt>
-          <dd className="font-medium">{challenge.start_date}</dd>
+      <dl className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="min-w-0">
+          <dt className="truncate text-sm text-gray-500">Start date</dt>
+          <dd className="truncate font-medium">{challenge.start_date}</dd>
         </div>
-        <div>
-          <dt className="text-sm text-gray-500">End date</dt>
-          <dd className="font-medium">{challenge.end_date}</dd>
+        <div className="min-w-0">
+          <dt className="truncate text-sm text-gray-500">End date</dt>
+          <dd className="truncate font-medium">{challenge.end_date}</dd>
         </div>
-        <div>
-          <dt className="text-sm text-gray-500">Check-in cadence</dt>
-          <dd className="font-medium">
+        <div className="min-w-0">
+          <dt className="truncate text-sm text-gray-500">Check-in cadence</dt>
+          <dd className="truncate font-medium">
             {challenge.cadence === "day"
               ? "Daily"
               : challenge.cadence === "week"
@@ -225,46 +224,46 @@ export default function ChallengeDetail({
         </div>
         {!isInviteView && (
           <>
-            <div>
-              <dt className="text-sm text-gray-500">This period</dt>
+            <div className="min-w-0">
+              <dt className="truncate text-sm text-gray-500">This period</dt>
               <dd className="font-medium">
                 {hasCheckedInThisPeriod ? "Already checked in" : "Not yet checked in"}
               </dd>
             </div>
             {checkInsLeft !== undefined && (
-              <div>
-                <dt className="text-sm text-gray-500">Check-ins left</dt>
-                <dd className="font-medium">{checkInsLeft}</dd>
+              <div className="min-w-0">
+                <dt className="truncate text-sm text-gray-500">Check-ins left</dt>
+                <dd className="truncate font-medium">{checkInsLeft}</dd>
               </div>
             )}
             {nextCheckInStartDisplay !== null && (
-              <div>
-                <dt className="text-sm text-gray-500">Next check-in starts</dt>
-                <dd className="font-medium">{nextCheckInStartDisplay}</dd>
+              <div className="min-w-0">
+                <dt className="truncate text-sm text-gray-500">Next check-in starts</dt>
+                <dd className="truncate font-medium">{nextCheckInStartDisplay}</dd>
               </div>
             )}
-            <div>
-              <dt className="text-sm text-gray-500">Total check-ins needed so far</dt>
-              <dd className="font-medium">{totalCheckInsNeededSoFarLocal}</dd>
+            <div className="min-w-0">
+              <dt className="truncate text-sm text-gray-500">Total check-ins needed so far</dt>
+              <dd className="truncate font-medium">{totalCheckInsNeededSoFarLocal}</dd>
             </div>
-            <div>
-              <dt className="text-sm text-gray-500">Your check-ins so far</dt>
-              <dd className="font-medium">{userCheckInCount}</dd>
+            <div className="min-w-0">
+              <dt className="truncate text-sm text-gray-500">Your check-ins so far</dt>
+              <dd className="truncate font-medium">{userCheckInCount}</dd>
             </div>
           </>
         )}
-        <div>
-          <dt className="text-sm text-gray-500">Your committed amount</dt>
-          <dd className="font-medium">${(challenge.amount_cents / 100).toFixed(2)}</dd>
+        <div className="min-w-0">
+          <dt className="truncate text-sm text-gray-500">Your committed amount</dt>
+          <dd className="truncate font-medium">${(challenge.amount_cents / 100).toFixed(2)}</dd>
         </div>
-        <div>
-          <dt className="text-sm text-gray-500">Total committed</dt>
-          <dd className="font-medium">${(totalCommittedCents / 100).toFixed(2)}</dd>
+        <div className="min-w-0">
+          <dt className="truncate text-sm text-gray-500">Total committed</dt>
+          <dd className="truncate font-medium">${(totalCommittedCents / 100).toFixed(2)}</dd>
         </div>
       </dl>
 
       {isInviteView && (
-        <div className="border-t pt-4 space-y-2">
+        <div className="space-y-2 border-t pt-4">
           {inviteJoinState?.joinDisabledReason && (
             <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
               {inviteJoinState.joinDisabledReason}
@@ -274,53 +273,67 @@ export default function ChallengeDetail({
             type="button"
             onClick={handleJoin}
             disabled={joining || !inviteJoinState?.canJoin}
-            className={`rounded px-4 py-2 text-sm font-medium text-white ${
+            title={joining ? "Joining…" : "Join challenge"}
+            aria-label={joining ? "Joining…" : "Join challenge"}
+            className={`flex w-full shrink-0 items-center justify-center gap-2 rounded px-4 py-2.5 text-sm font-medium text-white sm:w-auto ${
               inviteJoinState?.canJoin
                 ? "bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 : "cursor-not-allowed bg-gray-300 text-gray-500"
             }`}
           >
-            {joining ? "Joining…" : "Join challenge"}
+            <IconCheck />
+            <span className="whitespace-nowrap">{joining ? "Joining…" : "Join challenge"}</span>
           </button>
         </div>
       )}
 
       {!isInviteView && (
         <>
-          <div className="flex flex-wrap gap-2 border-t pt-4">
+          <div className="flex flex-nowrap gap-2 border-t pt-4">
             <button
               type="button"
               onClick={copyInvite}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              title={inviteCopied ? "Copied!" : "Invite"}
+              aria-label={inviteCopied ? "Copied!" : "Copy invite link"}
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded border border-gray-300 bg-white p-2.5 text-gray-700 hover:bg-gray-50 sm:px-4 sm:py-2"
             >
-              {inviteCopied ? "Copied!" : "Invite"}
+              <IconShare />
+              <span className="hidden whitespace-nowrap text-sm font-medium sm:inline">{inviteCopied ? "Copied!" : "Invite"}</span>
             </button>
             {canCheckIn && (
               <button
                 type="button"
                 onClick={doCheckIn}
                 disabled={checkingIn}
-                className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                title="Check in"
+                aria-label={checkingIn ? "Checking in…" : "Check in"}
+                className="flex shrink-0 items-center justify-center gap-1.5 rounded bg-green-600 p-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:px-4 sm:py-2"
               >
-                {checkingIn ? "Checking in…" : "Check in"}
+                <IconCheck />
+                <span className="hidden whitespace-nowrap sm:inline">{checkingIn ? "Checking in…" : "Check in"}</span>
               </button>
             )}
             {!canCheckIn && !isCompleted && !isInviteView && hasCheckedInThisPeriod && (
               <button
                 type="button"
                 disabled
-                className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500"
+                title="Checked in"
+                aria-label="Checked in"
+                className="flex shrink-0 cursor-not-allowed items-center justify-center gap-1.5 rounded bg-gray-300 p-2.5 text-gray-500 sm:px-4 sm:py-2"
               >
-                Checked in
+                <IconCheck />
+                <span className="hidden whitespace-nowrap text-sm font-medium sm:inline">Checked in</span>
               </button>
             )}
             {!canCheckIn && !isCompleted && !isInviteView && !hasStarted && (
               <button
                 type="button"
                 disabled
-                className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500"
+                title="Check in (challenge hasn’t started yet)"
+                aria-label="Check in unavailable: challenge hasn’t started yet"
+                className="flex shrink-0 cursor-not-allowed items-center justify-center rounded bg-gray-300 p-2.5 text-gray-500 sm:px-4 sm:py-2"
               >
-                Check in (challenge hasn’t started yet)
+                <IconCheck />
               </button>
             )}
             {isCreator && (
@@ -328,9 +341,11 @@ export default function ChallengeDetail({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="rounded border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                title="Delete challenge"
+                aria-label={deleting ? "Deleting…" : "Delete challenge"}
+                className="flex shrink-0 items-center justify-center rounded border border-red-300 bg-white p-2.5 text-red-700 hover:bg-red-50 disabled:opacity-50 sm:px-4 sm:py-2"
               >
-                {deleting ? "Deleting…" : "Delete challenge"}
+                <IconTrash />
               </button>
             )}
           </div>
@@ -342,9 +357,9 @@ export default function ChallengeDetail({
                 const count = checkIns.filter((c) => c.user_id === p.user_id).length;
                 const display = p.username?.trim() || p.email || `${p.user_id.slice(0, 8)}…`;
                 return (
-                  <li key={p.user_id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-800">{display}</span>
-                    <span>{count} check-ins</span>
+                  <li key={p.user_id} className="flex min-w-0 items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0 truncate text-gray-800">{display}</span>
+                    <span className="shrink-0 whitespace-nowrap">{count} check-ins</span>
                   </li>
                 );
               })}
@@ -366,9 +381,9 @@ export default function ChallengeDetail({
                       ? `+ $${(deltaCents / 100).toFixed(2)}`
                       : `- $${Math.abs(deltaCents / 100).toFixed(2)}`;
                   return (
-                    <li key={user_id} className="flex justify-between text-sm">
-                      <span className="text-gray-800">{display}</span>
-                      <span className="flex items-center gap-2">
+                    <li key={user_id} className="flex min-w-0 justify-between gap-2 text-sm">
+                      <span className="min-w-0 truncate text-gray-800">{display}</span>
+                      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
                         <span>${(payoutCents / 100).toFixed(2)}</span>
                         <span
                           className={

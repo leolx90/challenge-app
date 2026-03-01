@@ -104,10 +104,10 @@ export default async function ChallengeDetailPage({
       : [];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="mx-auto max-w-2xl">
-        <Link href="/" className="mb-4 inline-block text-sm text-blue-600 hover:underline">
-          ← Back to home
+        <Link href="/" className="mb-4 inline-block truncate text-sm text-blue-600 hover:underline" title="Back to home">
+          ← <span className="hidden sm:inline">Back to home</span><span className="sm:hidden">Back</span>
         </Link>
         <ChallengeDetail
           challenge={challenge}

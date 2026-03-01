@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getChallengesForUser } from "@/lib/db/challenges";
 import SignOutButton from "./sign-out-button";
+import { IconSettings, IconPlus } from "./icons";
 
 export default async function HomePage({
   username,
@@ -20,27 +21,32 @@ export default async function HomePage({
   const completed = (challenges ?? []).filter((c) => c.status === "completed");
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="mx-auto max-w-2xl">
         {username && (
           <p className="mb-2 text-gray-600">Hello, {username}</p>
         )}
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">My Challenges</h1>
-          <div className="flex items-center gap-3">
+        <div className="mb-6 flex min-w-0 items-center justify-between gap-2">
+          <h1 className="truncate text-xl font-bold text-gray-900 sm:text-2xl">My Challenges</h1>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <Link
               href="/settings"
-              className="text-sm text-gray-600 hover:text-gray-900"
+              title="Settings"
+              className="rounded p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              aria-label="Settings"
             >
-              Settings
+              <IconSettings />
             </Link>
             <SignOutButton />
             <Link
-            href="/challenge/new"
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Start challenge
-          </Link>
+              href="/challenge/new"
+              title="Start challenge"
+              className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:px-4"
+              aria-label="Start challenge"
+            >
+              <IconPlus />
+              <span className="hidden sm:inline">Start</span>
+            </Link>
           </div>
         </div>
 
@@ -54,10 +60,10 @@ export default async function HomePage({
                 <li key={c.id}>
                   <Link
                     href={`/challenge/${c.id}`}
-                    className="block rounded border border-gray-200 bg-white p-4 shadow-sm hover:border-blue-200 hover:shadow"
+                    className="flex min-w-0 items-center gap-2 rounded border border-gray-200 bg-white p-4 shadow-sm hover:border-blue-200 hover:shadow"
                   >
-                    <span className="font-medium text-gray-900">{c.name}</span>
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="min-w-0 truncate font-medium text-gray-900">{c.name}</span>
+                    <span className="shrink-0 whitespace-nowrap text-sm text-gray-500">
                       {c.start_date} – {c.end_date}
                     </span>
                   </Link>
@@ -77,10 +83,10 @@ export default async function HomePage({
                 <li key={c.id}>
                   <Link
                     href={`/challenge/${c.id}`}
-                    className="block rounded border border-gray-200 bg-white p-4 shadow-sm hover:border-gray-300"
+                    className="flex min-w-0 items-center gap-2 rounded border border-gray-200 bg-white p-4 shadow-sm hover:border-gray-300"
                   >
-                    <span className="font-medium text-gray-900">{c.name}</span>
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="min-w-0 truncate font-medium text-gray-900">{c.name}</span>
+                    <span className="shrink-0 whitespace-nowrap text-sm text-gray-500">
                       {c.start_date} – {c.end_date}
                     </span>
                   </Link>
