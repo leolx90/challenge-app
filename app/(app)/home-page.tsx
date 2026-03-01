@@ -2,7 +2,11 @@ import Link from "next/link";
 import { getChallengesForUser } from "@/lib/db/challenges";
 import SignOutButton from "./sign-out-button";
 
-export default async function HomePage() {
+export default async function HomePage({
+  username,
+}: {
+  username?: string;
+}) {
   const { data: challenges, error } = await getChallengesForUser();
   if (error) {
     return (
@@ -18,6 +22,9 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-2xl">
+        {username && (
+          <p className="mb-2 text-gray-600">Hello, {username}</p>
+        )}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">My Challenges</h1>
           <div className="flex items-center gap-3">

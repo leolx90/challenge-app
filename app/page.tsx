@@ -28,5 +28,5 @@ export default async function RootPage() {
   const profile = await getCurrentUserProfile();
   const needsOnboarding = !profile?.username?.trim();
   if (needsOnboarding) redirect("/onboarding");
-  return <HomePage />;
+  return <HomePage username={profile?.username?.trim() ?? undefined} />;
 }
