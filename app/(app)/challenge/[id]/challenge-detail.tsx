@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { checkInAction } from "./actions";
+import { getCurrentPeriodBounds, CADENCE_DAYS } from "@/lib/cadence";
+import type { Cadence } from "@/lib/cadence";
 
 type Challenge = {
   id: string;
@@ -69,6 +71,27 @@ export default function ChallengeDetail({
   const hasCheckedInThisPeriod = alreadyCheckedInThisPeriod || justCheckedIn;
   const canCheckIn =
     hasStarted && !isCompleted && !hasCheckedInThisPeriod && !isInviteView;
+
+  // Compute next check-in start in user's local timezone so it matches their calendar (avoids server-UTC off-by-one for daily).
+  const nextCheckInStartDisplay = useMemo(() => {
+    if (isCompleted) return null;
+    if (!hasStarted)
+      return new Date(challenge.start_date + "T00:00:00").toLocaleDateString(
+        undefined,
+        { dateStyle: "medium" }
+      );
+    const now = new Date();
+    const { start: periodStart } = getCurrentPeriodBounds(
+      now,
+      challenge.cadence as Cadence,
+      challenge.start_date
+    );
+    const periodDays = CADENCE_DAYS[challenge.cadence as Cadence];
+    if (periodDays <= 0) return null;
+    const next = new Date(periodStart);
+    next.setDate(next.getDate() + periodDays);
+    return next.toLocaleDateString(undefined, { dateStyle: "medium" });
+  }, [isCompleted, hasStarted, challenge.start_date, challenge.cadence]);
 
   async function doCheckIn() {
     if (!hasStarted || hasCheckedInThisPeriod) return;
@@ -174,15 +197,10 @@ export default function ChallengeDetail({
                 <dd className="font-medium">{checkInsLeft}</dd>
               </div>
             )}
-            {nextCheckInStartDate !== undefined && nextCheckInStartDate !== null && (
+            {nextCheckInStartDisplay !== null && (
               <div>
                 <dt className="text-sm text-gray-500">Next check-in starts</dt>
-                <dd className="font-medium">
-                  {new Date(nextCheckInStartDate + "T00:00:00").toLocaleDateString(
-                    undefined,
-                    { dateStyle: "medium" }
-                  )}
-                </dd>
+                <dd className="font-medium">{nextCheckInStartDisplay}</dd>
               </div>
             )}
             <div>
