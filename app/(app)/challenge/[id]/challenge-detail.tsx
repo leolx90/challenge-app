@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { checkInAction } from "./actions";
-import { getCurrentPeriodBounds, CADENCE_DAYS } from "@/lib/cadence";
+import { getCurrentPeriodBounds, countPeriods, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 
 type Challenge = {
@@ -97,6 +97,19 @@ export default function ChallengeDetail({
       joinDisabledReason: joinClosed ? "Joining closed after the first period." : null,
     };
   }, [isInviteView, challenge.start_date, challenge.cadence]);
+
+  // Total check-ins needed so far = # of periods from start through today (user's local date) so it matches their calendar.
+  const totalCheckInsNeededSoFarLocal = useMemo(() => {
+    if (isInviteView) return totalCheckInsNeededSoFar;
+    const startDate = new Date(challenge.start_date + "T00:00:00");
+    startDate.setHours(0, 0, 0, 0);
+    const challengeEnd = new Date(challenge.end_date + "T00:00:00");
+    challengeEnd.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const effectiveEnd = today.getTime() <= challengeEnd.getTime() ? today : challengeEnd;
+    return countPeriods(startDate, effectiveEnd, challenge.cadence as Cadence);
+  }, [isInviteView, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFar]);
 
   // Compute next check-in start in user's local timezone so it matches their calendar (avoids server-UTC off-by-one for daily).
   const nextCheckInStartDisplay = useMemo(() => {
@@ -232,7 +245,7 @@ export default function ChallengeDetail({
             )}
             <div>
               <dt className="text-sm text-gray-500">Total check-ins needed so far</dt>
-              <dd className="font-medium">{totalCheckInsNeededSoFar}</dd>
+              <dd className="font-medium">{totalCheckInsNeededSoFarLocal}</dd>
             </div>
             <div>
               <dt className="text-sm text-gray-500">Your check-ins so far</dt>
