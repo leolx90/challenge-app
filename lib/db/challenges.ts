@@ -235,7 +235,8 @@ export async function checkIn(challengeId: string) {
     period_start: periodStartDate,
   });
   if (error) {
-    if (error.code === "23505") return { error: new Error("Already checked in for this period") };
+    if (error.code === "23505" || /already checked in for this period/i.test(error.message))
+      return { error: new Error("Already checked in for this period") };
     return { error };
   }
   return { error: undefined };

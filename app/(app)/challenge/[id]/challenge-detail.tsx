@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { checkInAction } from "./actions";
-import { getCurrentPeriodBounds, countPeriods, CADENCE_DAYS } from "@/lib/cadence";
+import { getCurrentPeriodBounds, countPeriods, formatDateForDb, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 
 type Challenge = {
@@ -23,7 +23,7 @@ type Participant = {
   email?: string | null;
   username?: string | null;
 };
-type CheckIn = { id: string; user_id: string; checked_in_at: string };
+type CheckIn = { id: string; user_id: string; checked_in_at: string; period_start?: string | null };
 
 export default function ChallengeDetail({
   challenge,
@@ -110,6 +110,38 @@ export default function ChallengeDetail({
     const effectiveEnd = today.getTime() <= challengeEnd.getTime() ? today : challengeEnd;
     return countPeriods(startDate, effectiveEnd, challenge.cadence as Cadence);
   }, [isInviteView, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFar]);
+
+  // Your check-ins so far: count only check-ins that fall within the first N periods (N = total needed so far), so it can never exceed total needed. Handles legacy rows (period_start null) and duplicates.
+  const userCheckInCountDisplay = useMemo(() => {
+    if (isInviteView) return userCheckInCount;
+    const N = totalCheckInsNeededSoFarLocal;
+    const periodDays = CADENCE_DAYS[challenge.cadence as Cadence];
+    const startDate = new Date(challenge.start_date + "T00:00:00");
+    startDate.setHours(0, 0, 0, 0);
+    const challengeEnd = new Date(challenge.end_date + "T00:00:00");
+    challengeEnd.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const effectiveEnd = today.getTime() <= challengeEnd.getTime() ? today : challengeEnd;
+    const effectiveEndMs = effectiveEnd.getTime();
+    const validPeriodStarts = new Set<string>();
+    for (let i = 0; i < N; i++) {
+      const p = new Date(startDate);
+      p.setDate(p.getDate() + i * periodDays);
+      validPeriodStarts.add(formatDateForDb(p));
+    }
+    const userIns = checkIns.filter((c) => c.user_id === currentUserId);
+    let count = 0;
+    for (const c of userIns) {
+      if (c.period_start != null) {
+        if (validPeriodStarts.has(c.period_start)) count++;
+      } else {
+        const t = new Date(c.checked_in_at).getTime();
+        if (t >= startDate.getTime() && t <= effectiveEndMs) count++;
+      }
+    }
+    return Math.min(count, N);
+  }, [isInviteView, checkIns, currentUserId, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFarLocal, userCheckInCount]);
 
   // Compute next check-in start in user's local timezone so it matches their calendar (avoids server-UTC off-by-one for daily).
   const nextCheckInStartDisplay = useMemo(() => {
@@ -247,7 +279,7 @@ export default function ChallengeDetail({
             </div>
             <div className="min-w-0">
               <dt className="truncate text-sm text-gray-500">Your check-ins so far</dt>
-              <dd className="truncate font-medium">{userCheckInCount}</dd>
+              <dd className="truncate font-medium">{userCheckInCountDisplay}</dd>
             </div>
           </>
         )}
