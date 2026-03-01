@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { checkInAction } from "./actions";
 import { getCurrentPeriodBounds, countPeriods, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
-import { IconShare, IconCheck, IconTrash } from "@/app/(app)/icons";
 
 type Challenge = {
   id: string;
@@ -273,67 +272,53 @@ export default function ChallengeDetail({
             type="button"
             onClick={handleJoin}
             disabled={joining || !inviteJoinState?.canJoin}
-            title={joining ? "Joining…" : "Join challenge"}
-            aria-label={joining ? "Joining…" : "Join challenge"}
-            className={`flex w-full shrink-0 items-center justify-center gap-2 rounded px-4 py-2.5 text-sm font-medium text-white sm:w-auto ${
+            className={`rounded px-4 py-2 text-sm font-medium text-white ${
               inviteJoinState?.canJoin
                 ? "bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 : "cursor-not-allowed bg-gray-300 text-gray-500"
             }`}
           >
-            <IconCheck />
-            <span className="whitespace-nowrap">{joining ? "Joining…" : "Join challenge"}</span>
+            {joining ? "Joining…" : "Join challenge"}
           </button>
         </div>
       )}
 
       {!isInviteView && (
         <>
-          <div className="flex flex-nowrap gap-2 border-t pt-4">
+          <div className="flex flex-wrap gap-2 border-t pt-4">
             <button
               type="button"
               onClick={copyInvite}
-              title={inviteCopied ? "Copied!" : "Invite"}
-              aria-label={inviteCopied ? "Copied!" : "Copy invite link"}
-              className="flex shrink-0 items-center justify-center gap-1.5 rounded border border-gray-300 bg-white p-2.5 text-gray-700 hover:bg-gray-50 sm:px-4 sm:py-2"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              <IconShare />
-              <span className="hidden whitespace-nowrap text-sm font-medium sm:inline">{inviteCopied ? "Copied!" : "Invite"}</span>
+              {inviteCopied ? "Copied!" : "Invite"}
             </button>
             {canCheckIn && (
               <button
                 type="button"
                 onClick={doCheckIn}
                 disabled={checkingIn}
-                title="Check in"
-                aria-label={checkingIn ? "Checking in…" : "Check in"}
-                className="flex shrink-0 items-center justify-center gap-1.5 rounded bg-green-600 p-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:px-4 sm:py-2"
+                className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
               >
-                <IconCheck />
-                <span className="hidden whitespace-nowrap sm:inline">{checkingIn ? "Checking in…" : "Check in"}</span>
+                {checkingIn ? "Checking in…" : "Check in"}
               </button>
             )}
             {!canCheckIn && !isCompleted && !isInviteView && hasCheckedInThisPeriod && (
               <button
                 type="button"
                 disabled
-                title="Checked in"
-                aria-label="Checked in"
-                className="flex shrink-0 cursor-not-allowed items-center justify-center gap-1.5 rounded bg-gray-300 p-2.5 text-gray-500 sm:px-4 sm:py-2"
+                className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500"
               >
-                <IconCheck />
-                <span className="hidden whitespace-nowrap text-sm font-medium sm:inline">Checked in</span>
+                Checked in
               </button>
             )}
             {!canCheckIn && !isCompleted && !isInviteView && !hasStarted && (
               <button
                 type="button"
                 disabled
-                title="Check in (challenge hasn’t started yet)"
-                aria-label="Check in unavailable: challenge hasn’t started yet"
-                className="flex shrink-0 cursor-not-allowed items-center justify-center rounded bg-gray-300 p-2.5 text-gray-500 sm:px-4 sm:py-2"
+                className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500"
               >
-                <IconCheck />
+                Check in (challenge hasn’t started yet)
               </button>
             )}
             {isCreator && (
@@ -341,11 +326,9 @@ export default function ChallengeDetail({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                title="Delete challenge"
-                aria-label={deleting ? "Deleting…" : "Delete challenge"}
-                className="flex shrink-0 items-center justify-center rounded border border-red-300 bg-white p-2.5 text-red-700 hover:bg-red-50 disabled:opacity-50 sm:px-4 sm:py-2"
+                className="rounded border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
               >
-                <IconTrash />
+                {deleting ? "Deleting…" : "Delete challenge"}
               </button>
             )}
           </div>
