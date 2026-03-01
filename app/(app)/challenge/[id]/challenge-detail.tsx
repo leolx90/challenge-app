@@ -198,20 +198,20 @@ export default function ChallengeDetail({
           <dt className="text-sm text-gray-500">End date</dt>
           <dd className="font-medium">{challenge.end_date}</dd>
         </div>
+        <div>
+          <dt className="text-sm text-gray-500">Check-in cadence</dt>
+          <dd className="font-medium">
+            {challenge.cadence === "day"
+              ? "Daily"
+              : challenge.cadence === "week"
+                ? "Weekly"
+                : challenge.cadence === "two_weeks"
+                  ? "Every 2 weeks"
+                  : "Monthly"}
+          </dd>
+        </div>
         {!isInviteView && (
           <>
-            <div>
-              <dt className="text-sm text-gray-500">Check-in cadence</dt>
-              <dd className="font-medium">
-                {challenge.cadence === "day"
-                  ? "Daily"
-                  : challenge.cadence === "week"
-                    ? "Weekly"
-                    : challenge.cadence === "two_weeks"
-                      ? "Every 2 weeks"
-                      : "Monthly"}
-              </dd>
-            </div>
             <div>
               <dt className="text-sm text-gray-500">This period</dt>
               <dd className="font-medium">
