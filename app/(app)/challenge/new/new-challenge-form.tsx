@@ -19,7 +19,7 @@ export default function NewChallengeForm() {
   const [name, setName] = useState("");
   const [cadence, setCadence] = useState<"day" | "week" | "two_weeks" | "month">("week");
   const [startDate, setStartDate] = useState("");
-  const [length, setLength] = useState(4);
+  const [lengthInput, setLengthInput] = useState("4");
   const [amountDollars, setAmountDollars] = useState("");
 
   async function handleCreate(e: React.FormEvent) {
@@ -27,8 +27,18 @@ export default function NewChallengeForm() {
     setError(null);
     setLoading(true);
     const amountCents = Math.round(parseFloat(amountDollars || "0") * 100);
-    if (amountCents < 0 || !name || !startDate || length < 1) {
-      setError("Please fill all fields and use a positive amount.");
+    const length =
+      lengthInput.trim() === ""
+        ? NaN
+        : parseInt(lengthInput, 10);
+    if (
+      amountCents < 0 ||
+      !name ||
+      !startDate ||
+      !Number.isInteger(length) ||
+      length < 1
+    ) {
+      setError("Please fill all fields and use a positive amount and length.");
       setLoading(false);
       return;
     }
@@ -129,9 +139,10 @@ export default function NewChallengeForm() {
           id="length"
           type="number"
           min={1}
-          value={length}
-          onChange={(e) => setLength(parseInt(e.target.value, 10) || 1)}
+          value={lengthInput}
+          onChange={(e) => setLengthInput(e.target.value)}
           className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+          placeholder="e.g. 4"
         />
       </div>
       <div>
