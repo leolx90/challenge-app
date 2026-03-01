@@ -85,7 +85,7 @@ export default async function ChallengeDetailPage({
       ? null
       : !hasStarted
         ? challenge.start_date
-        : alreadyCheckedInThisPeriod && nextPeriodStart
+        : nextPeriodStart
           ? nextPeriodStart.toISOString().slice(0, 10)
           : null;
   const totalCommittedCents =

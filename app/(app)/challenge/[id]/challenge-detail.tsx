@@ -185,12 +185,6 @@ export default function ChallengeDetail({
                 </dd>
               </div>
             )}
-            {nextCheckInStartDate === null && !isCompleted && hasStarted && (
-              <div>
-                <dt className="text-sm text-gray-500">Next check-in starts</dt>
-                <dd className="font-medium">Now</dd>
-              </div>
-            )}
             <div>
               <dt className="text-sm text-gray-500">Total check-ins needed so far</dt>
               <dd className="font-medium">{totalCheckInsNeededSoFar}</dd>
