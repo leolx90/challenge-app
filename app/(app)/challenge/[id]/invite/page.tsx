@@ -6,6 +6,8 @@ import {
   getCurrentUserProfile,
   isParticipant,
 } from "@/lib/db/challenges";
+import { CADENCE_DAYS } from "@/lib/cadence";
+import type { Cadence } from "@/lib/cadence";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import ChallengeDetail from "../challenge-detail";
@@ -36,9 +38,12 @@ export default async function InvitePage({
 
   const startDate = new Date(challenge.start_date + "T00:00:00");
   startDate.setHours(0, 0, 0, 0);
+  const periodDays = CADENCE_DAYS[challenge.cadence as Cadence];
+  const secondPeriodStart = new Date(startDate);
+  secondPeriodStart.setDate(secondPeriodStart.getDate() + periodDays);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const startDatePassed = startDate.getTime() < today.getTime();
+  const joinClosed = today.getTime() >= secondPeriodStart.getTime();
   const totalCommittedCents =
     (challenge.amount_cents ?? 0) * (participants?.length ?? 0);
 
@@ -60,9 +65,9 @@ export default async function InvitePage({
           totalCommittedCents={totalCommittedCents}
           payouts={[]}
           isInviteView={true}
-          canJoin={!startDatePassed}
+          canJoin={!joinClosed}
           joinDisabledReason={
-            startDatePassed ? "Challenge has already started." : null
+            joinClosed ? "Joining closed after the first period." : null
           }
         />
       </div>
