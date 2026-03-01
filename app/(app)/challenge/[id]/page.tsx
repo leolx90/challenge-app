@@ -9,8 +9,8 @@ import {
 import { countPeriods, formatDateForDb, getCurrentPeriodBounds, isInPeriod, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import ChallengeDetail from "./challenge-detail";
+import DetailNav from "./detail-nav";
 
 export default async function ChallengeDetailPage({
   params,
@@ -106,9 +106,7 @@ export default async function ChallengeDetailPage({
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="mx-auto max-w-2xl">
-        <Link href="/" className="mb-4 inline-block truncate text-sm text-blue-600 hover:underline" title="Back to home">
-          ← <span className="hidden sm:inline">Back to home</span><span className="sm:hidden">Back</span>
-        </Link>
+        <DetailNav />
         <ChallengeDetail
           challenge={challenge}
           participants={participants ?? []}

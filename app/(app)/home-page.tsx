@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getChallengesForUser } from "@/lib/db/challenges";
 import SignOutButton from "./sign-out-button";
+import RefreshButton from "./refresh-button";
 import { IconSettings, IconPlus } from "./icons";
 
 export default async function HomePage({
@@ -29,6 +30,7 @@ export default async function HomePage({
         <div className="mb-6 flex min-w-0 items-center justify-between gap-2">
           <h1 className="truncate text-xl font-bold text-gray-900 sm:text-2xl">My Challenges</h1>
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <RefreshButton />
             <Link
               href="/settings"
               title="Settings"
