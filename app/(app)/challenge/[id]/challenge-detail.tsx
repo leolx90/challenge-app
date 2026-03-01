@@ -400,8 +400,13 @@ export default function ChallengeDetail({
               </button>
             )}
           </div>
+          {canCheckIn && (
+            <p className="my-0 shrink-0 py-0 text-xs leading-tight text-gray-400">
+              Fake check-ins? Karma&apos;s keeping score. 😅
+            </p>
+          )}
 
-          <section className="border-t pt-4">
+          <section className="border-t pt-0">
             <h2 className="mb-3 text-lg font-semibold text-gray-800">Participants</h2>
             <ul className="space-y-2">
               {participants.map((p) => {
