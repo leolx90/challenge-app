@@ -72,6 +72,23 @@ export default function ChallengeDetail({
   const canCheckIn =
     hasStarted && !isCompleted && !hasCheckedInThisPeriod && !isInviteView;
 
+  // On invite view, compute join eligibility in user's local timezone so the button state matches their calendar (avoids server-UTC closing join too early).
+  const inviteJoinState = useMemo(() => {
+    if (!isInviteView) return null;
+    const startDate = new Date(challenge.start_date + "T00:00:00");
+    startDate.setHours(0, 0, 0, 0);
+    const periodDays = CADENCE_DAYS[challenge.cadence as Cadence];
+    const secondPeriodStart = new Date(startDate);
+    secondPeriodStart.setDate(secondPeriodStart.getDate() + periodDays);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const joinClosed = today.getTime() >= secondPeriodStart.getTime();
+    return {
+      canJoin: !joinClosed,
+      joinDisabledReason: joinClosed ? "Joining closed after the first period." : null,
+    };
+  }, [isInviteView, challenge.start_date, challenge.cadence]);
+
   // Compute next check-in start in user's local timezone so it matches their calendar (avoids server-UTC off-by-one for daily).
   const nextCheckInStartDisplay = useMemo(() => {
     if (isCompleted) return null;
@@ -107,7 +124,8 @@ export default function ChallengeDetail({
   }
 
   async function handleJoin() {
-    if (!canJoin || joinDisabledReason) return;
+    const allowed = isInviteView ? inviteJoinState?.canJoin : canJoin;
+    if (!allowed) return;
     setError(null);
     setJoining(true);
     const supabase = createClient();
@@ -223,19 +241,19 @@ export default function ChallengeDetail({
         </div>
       </dl>
 
-      {isInviteView && canJoin !== undefined && (
+      {isInviteView && (inviteJoinState ?? canJoin !== undefined) && (
         <div className="border-t pt-4 space-y-2">
-          {joinDisabledReason && (
+          {(inviteJoinState?.joinDisabledReason ?? joinDisabledReason) && (
             <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              {joinDisabledReason}
+              {inviteJoinState?.joinDisabledReason ?? joinDisabledReason}
             </p>
           )}
           <button
             type="button"
             onClick={handleJoin}
-            disabled={joining || !canJoin}
+            disabled={joining || !(inviteJoinState?.canJoin ?? canJoin)}
             className={`rounded px-4 py-2 text-sm font-medium text-white ${
-              canJoin
+              (inviteJoinState?.canJoin ?? canJoin)
                 ? "bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 : "cursor-not-allowed bg-gray-300 text-gray-500"
             }`}
