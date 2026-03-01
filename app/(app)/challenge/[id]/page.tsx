@@ -6,7 +6,7 @@ import {
   getCurrentUserProfile,
   isParticipant,
 } from "@/lib/db/challenges";
-import { countPeriods, getCurrentPeriodBounds, isInPeriod, CADENCE_DAYS } from "@/lib/cadence";
+import { countPeriods, formatDateForDb, getCurrentPeriodBounds, isInPeriod, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -57,8 +57,11 @@ export default async function ChallengeDetailPage({
     challenge.cadence as Cadence,
     challenge.start_date
   );
+  const currentPeriodStartStr = formatDateForDb(periodStart);
   const alreadyCheckedInThisPeriod = userCheckIns.some((c) =>
-    isInPeriod(new Date(c.checked_in_at), periodStart, periodEnd)
+    c.period_start != null
+      ? c.period_start === currentPeriodStartStr
+      : isInPeriod(new Date(c.checked_in_at), periodStart, periodEnd)
   );
   const cadence = challenge.cadence as Cadence;
   const periodDays = CADENCE_DAYS[cadence];

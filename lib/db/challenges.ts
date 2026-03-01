@@ -106,7 +106,7 @@ export async function getChallengeWithParticipantsAndCheckIns(id: string) {
 
   const { data: checkIns, error: cie } = await supabase
     .from("check_ins")
-    .select("id, user_id, checked_in_at")
+    .select("id, user_id, checked_in_at, period_start")
     .eq("challenge_id", id)
     .order("checked_in_at", { ascending: false });
   if (cie) return { challenge, participants: participantsWithProfile, checkIns: [], error: cie };
@@ -219,11 +219,13 @@ export async function checkIn(challengeId: string) {
 
   const { data: existing } = await supabase
     .from("check_ins")
-    .select("checked_in_at")
+    .select("checked_in_at, period_start")
     .eq("challenge_id", challengeId)
     .eq("user_id", user.id);
   const alreadyCheckedIn = (existing ?? []).some((row) =>
-    isInPeriod(new Date(row.checked_in_at), start, end)
+    row.period_start != null
+      ? row.period_start === periodStartDate
+      : isInPeriod(new Date(row.checked_in_at), start, end)
   );
   if (alreadyCheckedIn) return { error: new Error("Already checked in for this period") };
 
