@@ -143,6 +143,42 @@ export default function ChallengeDetail({
     return Math.min(count, N);
   }, [isInviteView, checkIns, currentUserId, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFarLocal, userCheckInCount]);
 
+  // Per-participant check-in count using the same "within first N periods" logic so Participants list matches "Your check-ins so far" and total needed.
+  const participantCheckInCountDisplay = useMemo(() => {
+    if (isInviteView) return new Map<string, number>();
+    const N = totalCheckInsNeededSoFarLocal;
+    const periodDays = CADENCE_DAYS[challenge.cadence as Cadence];
+    const startDate = new Date(challenge.start_date + "T00:00:00");
+    startDate.setHours(0, 0, 0, 0);
+    const challengeEnd = new Date(challenge.end_date + "T00:00:00");
+    challengeEnd.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const effectiveEnd = today.getTime() <= challengeEnd.getTime() ? today : challengeEnd;
+    const effectiveEndMs = effectiveEnd.getTime();
+    const validPeriodStarts = new Set<string>();
+    for (let i = 0; i < N; i++) {
+      const p = new Date(startDate);
+      p.setDate(p.getDate() + i * periodDays);
+      validPeriodStarts.add(formatDateForDb(p));
+    }
+    const map = new Map<string, number>();
+    for (const participant of participants) {
+      const userIns = checkIns.filter((c) => c.user_id === participant.user_id);
+      let count = 0;
+      for (const c of userIns) {
+        if (c.period_start != null) {
+          if (validPeriodStarts.has(c.period_start)) count++;
+        } else {
+          const t = new Date(c.checked_in_at).getTime();
+          if (t >= startDate.getTime() && t <= effectiveEndMs) count++;
+        }
+      }
+      map.set(participant.user_id, Math.min(count, N));
+    }
+    return map;
+  }, [isInviteView, participants, checkIns, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFarLocal]);
+
   // Compute next check-in start in user's local timezone so it matches their calendar (avoids server-UTC off-by-one for daily).
   const nextCheckInStartDisplay = useMemo(() => {
     if (isCompleted) return null;
@@ -369,7 +405,7 @@ export default function ChallengeDetail({
             <h2 className="mb-3 text-lg font-semibold text-gray-800">Participants</h2>
             <ul className="space-y-2">
               {participants.map((p) => {
-                const count = checkIns.filter((c) => c.user_id === p.user_id).length;
+                const count = participantCheckInCountDisplay.get(p.user_id) ?? checkIns.filter((c) => c.user_id === p.user_id).length;
                 const display = p.username?.trim() || p.email || `${p.user_id.slice(0, 8)}…`;
                 return (
                   <li key={p.user_id} className="flex min-w-0 items-center justify-between gap-2 text-sm">
