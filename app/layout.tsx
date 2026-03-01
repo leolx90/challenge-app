@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import FeedbackLink from "./(app)/feedback-link";
+import PullToRefresh from "./(app)/pull-to-refresh";
 
 export const metadata: Metadata = {
   title: "Challenge Tracker",
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased pb-14">
-        {children}
+        <PullToRefresh>
+          {children}
+        </PullToRefresh>
         <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-gray-50 py-3 text-center">
           <FeedbackLink />
         </footer>

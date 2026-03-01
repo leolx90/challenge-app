@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { checkInAction } from "./actions";
-import { getCurrentPeriodBounds, countPeriods, formatDateForDb, CADENCE_DAYS, countPeriodsForDailyUtc, getValidPeriodStartStringsForDaily } from "@/lib/cadence";
+import { getCurrentPeriodBounds, countPeriods, formatDateForDb, formatDateLocal, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 
 type Challenge = {
@@ -68,9 +68,49 @@ export default function ChallengeDetail({
 
   const isCreator = challenge.creator_id === currentUserId;
   const isCompleted = challenge.status === "completed";
-  const hasCheckedInThisPeriod = alreadyCheckedInThisPeriod || justCheckedIn;
+  const cadence = challenge.cadence as Cadence;
+
+  // For daily, use client-local period so counts match user's calendar.
+  const localAlreadyCheckedInThisPeriod = useMemo(() => {
+    if (cadence !== "day" || isInviteView) return false;
+    const now = new Date();
+    const { start, end } = getCurrentPeriodBounds(now, "day", challenge.start_date);
+    const currentPeriodStartStr = formatDateLocal(start);
+    const userIns = checkIns.filter((c) => c.user_id === currentUserId);
+    return userIns.some((c) =>
+      c.period_start != null
+        ? c.period_start === currentPeriodStartStr
+        : (() => {
+            const t = new Date(c.checked_in_at).getTime();
+            return t >= start.getTime() && t <= end.getTime();
+          })()
+    );
+  }, [cadence, isInviteView, checkIns, currentUserId, challenge.start_date]);
+
+  const localCheckInsLeft = useMemo(() => {
+    if (cadence !== "day" || isInviteView || !hasStarted) return undefined;
+    const startDate = new Date(challenge.start_date + "T00:00:00");
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(challenge.end_date + "T00:00:00");
+    endDate.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const { start: periodStart, end: periodEnd } = getCurrentPeriodBounds(now, "day", challenge.start_date);
+    const periodDays = 1;
+    const nextPeriodStart = new Date(periodStart);
+    nextPeriodStart.setDate(nextPeriodStart.getDate() + periodDays);
+    const alreadyCheckedIn = localAlreadyCheckedInThisPeriod;
+    return alreadyCheckedIn
+      ? countPeriods(nextPeriodStart, endDate, "day")
+      : countPeriods(periodStart, endDate, "day");
+  }, [cadence, isInviteView, hasStarted, challenge.start_date, challenge.end_date, localAlreadyCheckedInThisPeriod]);
+
+  const effectiveAlreadyCheckedInThisPeriod =
+    cadence === "day" ? localAlreadyCheckedInThisPeriod : alreadyCheckedInThisPeriod;
+  const hasCheckedInThisPeriod = effectiveAlreadyCheckedInThisPeriod || justCheckedIn;
   const canCheckIn =
     hasStarted && !isCompleted && !hasCheckedInThisPeriod && !isInviteView;
+  const effectiveCheckInsLeft =
+    cadence === "day" && localCheckInsLeft !== undefined ? localCheckInsLeft : checkInsLeft;
 
   // On invite view, compute join eligibility in user's local timezone so the button state matches their calendar.
   const inviteJoinState = useMemo(() => {
@@ -98,19 +138,10 @@ export default function ChallengeDetail({
     };
   }, [isInviteView, challenge.start_date, challenge.cadence]);
 
-  // Total check-ins needed so far. Daily uses UTC and ends at yesterday (current day not yet "needed"); other cadences use local.
+  // Total check-ins needed so far (all cadences use local time).
   const totalCheckInsNeededSoFarLocal = useMemo(() => {
     if (isInviteView) return totalCheckInsNeededSoFar;
-    const cadence = challenge.cadence as Cadence;
-    if (cadence === "day") {
-      const now = new Date();
-      const yesterdayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 23, 59, 59, 999));
-      const endDate = new Date(challenge.end_date + "T23:59:59.999Z");
-      const effectiveEnd = yesterdayUtc.getTime() <= endDate.getTime() ? yesterdayUtc : endDate;
-      const n = countPeriodsForDailyUtc(challenge.start_date, effectiveEnd);
-      // On first day (yesterday before start) n is 0; show 1 so "needed" makes sense.
-      return n > 0 ? n : 1;
-    }
+    const c = challenge.cadence as Cadence;
     const startDate = new Date(challenge.start_date + "T00:00:00");
     startDate.setHours(0, 0, 0, 0);
     const challengeEnd = new Date(challenge.end_date + "T00:00:00");
@@ -118,14 +149,15 @@ export default function ChallengeDetail({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const effectiveEnd = today.getTime() <= challengeEnd.getTime() ? today : challengeEnd;
-    return countPeriods(startDate, effectiveEnd, cadence);
+    return countPeriods(startDate, effectiveEnd, c);
   }, [isInviteView, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFar]);
 
-  // Your check-ins so far: count only check-ins that fall within the first N periods (N = total needed so far). Daily uses UTC to match DB period_start.
+  // Your check-ins so far: count check-ins within first N periods (all cadences use local time).
   const userCheckInCountDisplay = useMemo(() => {
     if (isInviteView) return userCheckInCount;
     const N = totalCheckInsNeededSoFarLocal;
-    const cadence = challenge.cadence as Cadence;
+    const c = challenge.cadence as Cadence;
+    const periodDays = CADENCE_DAYS[c];
     const startDate = new Date(challenge.start_date + "T00:00:00");
     startDate.setHours(0, 0, 0, 0);
     const challengeEnd = new Date(challenge.end_date + "T00:00:00");
@@ -134,43 +166,31 @@ export default function ChallengeDetail({
     today.setHours(0, 0, 0, 0);
     const effectiveEnd = today.getTime() <= challengeEnd.getTime() ? today : challengeEnd;
     const effectiveEndMs = effectiveEnd.getTime();
-
-    let validPeriodStarts: Set<string>;
-    if (cadence === "day") {
-      const now = new Date();
-      const endDate = new Date(challenge.end_date + "T23:59:59.999Z");
-      const effectiveEndUtc = now.getTime() <= endDate.getTime() ? now : endDate;
-      validPeriodStarts = getValidPeriodStartStringsForDaily(challenge.start_date, effectiveEndUtc);
-    } else {
-      const periodDays = CADENCE_DAYS[cadence];
-      validPeriodStarts = new Set<string>();
-      for (let i = 0; i < N; i++) {
-        const p = new Date(startDate);
-        p.setDate(p.getDate() + i * periodDays);
-        validPeriodStarts.add(formatDateForDb(p));
-      }
+    const validPeriodStarts = new Set<string>();
+    for (let i = 0; i < N; i++) {
+      const p = new Date(startDate);
+      p.setDate(p.getDate() + i * periodDays);
+      validPeriodStarts.add(c === "day" ? formatDateLocal(p) : formatDateForDb(p));
     }
-
     const userIns = checkIns.filter((c) => c.user_id === currentUserId);
     let count = 0;
-    for (const c of userIns) {
-      if (c.period_start != null) {
-        if (validPeriodStarts.has(c.period_start)) count++;
+    for (const check of userIns) {
+      if (check.period_start != null) {
+        if (validPeriodStarts.has(check.period_start)) count++;
       } else {
-        const t = new Date(c.checked_in_at).getTime();
+        const t = new Date(check.checked_in_at).getTime();
         if (t >= startDate.getTime() && t <= effectiveEndMs) count++;
       }
     }
-    // Daily: N is through yesterday; allow +1 so today's check-in shows
-    const cap = cadence === "day" ? N + 1 : N;
-    return Math.min(count, cap);
+    return Math.min(count, N);
   }, [isInviteView, checkIns, currentUserId, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFarLocal, userCheckInCount]);
 
-  // Per-participant check-in count using the same "within first N periods" logic. Daily uses UTC to match DB.
+  // Per-participant check-in count (same "within first N periods" logic, all local time).
   const participantCheckInCountDisplay = useMemo(() => {
     if (isInviteView) return new Map<string, number>();
     const N = totalCheckInsNeededSoFarLocal;
-    const cadence = challenge.cadence as Cadence;
+    const c = challenge.cadence as Cadence;
+    const periodDays = CADENCE_DAYS[c];
     const startDate = new Date(challenge.start_date + "T00:00:00");
     startDate.setHours(0, 0, 0, 0);
     const challengeEnd = new Date(challenge.end_date + "T00:00:00");
@@ -179,37 +199,25 @@ export default function ChallengeDetail({
     today.setHours(0, 0, 0, 0);
     const effectiveEnd = today.getTime() <= challengeEnd.getTime() ? today : challengeEnd;
     const effectiveEndMs = effectiveEnd.getTime();
-
-    let validPeriodStarts: Set<string>;
-    if (cadence === "day") {
-      const now = new Date();
-      const endDate = new Date(challenge.end_date + "T23:59:59.999Z");
-      const effectiveEndUtc = now.getTime() <= endDate.getTime() ? now : endDate;
-      validPeriodStarts = getValidPeriodStartStringsForDaily(challenge.start_date, effectiveEndUtc);
-    } else {
-      const periodDays = CADENCE_DAYS[cadence];
-      validPeriodStarts = new Set<string>();
-      for (let i = 0; i < N; i++) {
-        const p = new Date(startDate);
-        p.setDate(p.getDate() + i * periodDays);
-        validPeriodStarts.add(formatDateForDb(p));
-      }
+    const validPeriodStarts = new Set<string>();
+    for (let i = 0; i < N; i++) {
+      const p = new Date(startDate);
+      p.setDate(p.getDate() + i * periodDays);
+      validPeriodStarts.add(c === "day" ? formatDateLocal(p) : formatDateForDb(p));
     }
-
     const map = new Map<string, number>();
     for (const participant of participants) {
-      const userIns = checkIns.filter((c) => c.user_id === participant.user_id);
+      const userIns = checkIns.filter((ci) => ci.user_id === participant.user_id);
       let count = 0;
-      for (const c of userIns) {
-        if (c.period_start != null) {
-          if (validPeriodStarts.has(c.period_start)) count++;
+      for (const ci of userIns) {
+        if (ci.period_start != null) {
+          if (validPeriodStarts.has(ci.period_start)) count++;
         } else {
-          const t = new Date(c.checked_in_at).getTime();
+          const t = new Date(ci.checked_in_at).getTime();
           if (t >= startDate.getTime() && t <= effectiveEndMs) count++;
         }
       }
-      const cap = cadence === "day" ? N + 1 : N;
-      map.set(participant.user_id, Math.min(count, cap));
+      map.set(participant.user_id, Math.min(count, N));
     }
     return map;
   }, [isInviteView, participants, checkIns, challenge.start_date, challenge.end_date, challenge.cadence, totalCheckInsNeededSoFarLocal]);
@@ -240,7 +248,9 @@ export default function ChallengeDetail({
     setError(null);
     setCheckingIn(true);
     setJustCheckedIn(true);
-    const { error: actionError } = await checkInAction(challenge.id);
+    const periodStartForDaily =
+      cadence === "day" ? formatDateLocal(new Date()) : undefined;
+    const { error: actionError } = await checkInAction(challenge.id, periodStartForDaily);
     if (actionError) {
       setJustCheckedIn(false);
       setError(actionError);
@@ -250,14 +260,12 @@ export default function ChallengeDetail({
     setCheckingIn(false);
   }
 
-  // Clear optimistic "just checked in" only when the server confirms alreadyCheckedInThisPeriod.
-  // (Avoids clearing on count increase alone, which can run before server state updates and cause
-  // daily cadence to bounce back to green due to timezone/period mismatch.)
+  // Clear optimistic "just checked in" when server/local confirms already checked in this period.
   useEffect(() => {
-    if (justCheckedIn && alreadyCheckedInThisPeriod) {
+    if (justCheckedIn && effectiveAlreadyCheckedInThisPeriod) {
       setJustCheckedIn(false);
     }
-  }, [justCheckedIn, alreadyCheckedInThisPeriod]);
+  }, [justCheckedIn, effectiveAlreadyCheckedInThisPeriod]);
 
   async function handleJoin() {
     const allowed = isInviteView ? inviteJoinState?.canJoin : canJoin;
@@ -343,10 +351,10 @@ export default function ChallengeDetail({
                 {hasCheckedInThisPeriod ? "Already checked in" : "Not yet checked in"}
               </dd>
             </div>
-            {checkInsLeft !== undefined && (
+            {effectiveCheckInsLeft !== undefined && (
               <div className="min-w-0">
                 <dt className="truncate text-sm text-gray-500">Check-ins left</dt>
-                <dd className="truncate font-medium">{checkInsLeft}</dd>
+                <dd className="truncate font-medium">{effectiveCheckInsLeft}</dd>
               </div>
             )}
             {nextCheckInStartDisplay !== null && (

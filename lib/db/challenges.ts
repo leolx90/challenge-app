@@ -192,7 +192,10 @@ export async function deleteChallenge(challengeId: string) {
   return { error };
 }
 
-export async function checkIn(challengeId: string) {
+export async function checkIn(
+  challengeId: string,
+  periodStartForDaily?: string
+) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -215,7 +218,10 @@ export async function checkIn(challengeId: string) {
     challenge.cadence as Cadence,
     challenge.start_date
   );
-  const periodStartDate = formatDateForDb(start);
+  const periodStartDate =
+    (challenge.cadence === "day" && periodStartForDaily != null)
+      ? periodStartForDaily
+      : formatDateForDb(start);
 
   const { data: existing } = await supabase
     .from("check_ins")
