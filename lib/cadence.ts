@@ -67,11 +67,26 @@ export function getCurrentPeriodBounds(
   challengeStartDate: string
 ): { start: Date; end: Date } {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
 
+  // Daily: use UTC date so period matches DB (trigger sets period_start from UTC date).
   if (cadence === "day") {
-    return { start: new Date(d), end: new Date(d) };
+    const start = new Date(
+      Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+        0,
+        0,
+        0,
+        0
+      )
+    );
+    const end = new Date(start);
+    end.setUTCHours(23, 59, 59, 999);
+    return { start, end };
   }
+
+  d.setHours(0, 0, 0, 0);
 
   const startDate = new Date(challengeStartDate + "T00:00:00");
   startDate.setHours(0, 0, 0, 0);
@@ -87,6 +102,55 @@ export function getCurrentPeriodBounds(
   end.setDate(start.getDate() + periodDays - 1);
   end.setHours(23, 59, 59, 999);
   return { start, end };
+}
+
+/**
+ * For daily cadence only: count UTC days from start_date through effectiveEnd (inclusive).
+ * Matches DB period_start (UTC date). Use for "total check-ins needed so far" and valid-period set.
+ */
+export function countPeriodsForDailyUtc(
+  startDateStr: string,
+  effectiveEnd: Date
+): number {
+  const start = new Date(startDateStr + "T00:00:00Z");
+  const startUtc = Date.UTC(
+    start.getUTCFullYear(),
+    start.getUTCMonth(),
+    start.getUTCDate()
+  );
+  const endUtc = Date.UTC(
+    effectiveEnd.getUTCFullYear(),
+    effectiveEnd.getUTCMonth(),
+    effectiveEnd.getUTCDate()
+  );
+  const diffDays = Math.floor((endUtc - startUtc) / (24 * 60 * 60 * 1000)) + 1;
+  return Math.max(0, diffDays);
+}
+
+/**
+ * For daily cadence only: set of UTC date strings (YYYY-MM-DD) from start_date through effectiveEnd.
+ * Matches DB period_start so check-ins are counted correctly.
+ */
+export function getValidPeriodStartStringsForDaily(
+  startDateStr: string,
+  effectiveEnd: Date
+): Set<string> {
+  const set = new Set<string>();
+  const start = new Date(startDateStr + "T00:00:00Z");
+  const endUtc = Date.UTC(
+    effectiveEnd.getUTCFullYear(),
+    effectiveEnd.getUTCMonth(),
+    effectiveEnd.getUTCDate(),
+    23,
+    59,
+    59,
+    999
+  );
+  const dayMs = 24 * 60 * 60 * 1000;
+  for (let t = start.getTime(); t <= endUtc; t += dayMs) {
+    set.add(new Date(t).toISOString().slice(0, 10));
+  }
+  return set;
 }
 
 /**
