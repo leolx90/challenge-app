@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { computeEndDate, formatDateForDb, getCurrentPeriodBounds, isInPeriod } from "@/lib/cadence";
+import { computeEndDate, formatDateLocal, getCurrentPeriodBounds, isInPeriod } from "@/lib/cadence";
 import type { Cadence } from "@/lib/db/types";
 
 /** Ensure current user has a row in profiles (so their email shows for others). Call when user is loaded. */
@@ -145,7 +145,7 @@ export async function createChallenge(params: {
 
   const startDate = new Date(params.start_date + "T00:00:00");
   const endDate = computeEndDate(startDate, params.length, params.cadence);
-  const end_date = formatDateForDb(endDate);
+  const end_date = formatDateLocal(endDate);
 
   const { data: challenge, error: insertError } = await supabase
     .from("challenges")
@@ -194,7 +194,7 @@ export async function deleteChallenge(challengeId: string) {
 
 export async function checkIn(
   challengeId: string,
-  periodStartForDaily?: string
+  periodStartFromClient?: string
 ) {
   const supabase = await createClient();
   const {
@@ -209,8 +209,8 @@ export async function checkIn(
     .single();
   if (ce || !challenge) return { error: ce ?? new Error("Challenge not found") };
   if (challenge.status === "completed") return { error: new Error("Challenge already completed") };
-  const today = new Date().toISOString().slice(0, 10);
-  if (challenge.start_date > today) return { error: new Error("Challenge has not started yet") };
+  const todayLocal = formatDateLocal(new Date());
+  if (challenge.start_date > todayLocal) return { error: new Error("Challenge has not started yet") };
 
   const now = new Date();
   const { start, end } = getCurrentPeriodBounds(
@@ -219,20 +219,26 @@ export async function checkIn(
     challenge.start_date
   );
   const periodStartDate =
-    (challenge.cadence === "day" && periodStartForDaily != null)
-      ? periodStartForDaily
-      : formatDateForDb(start);
+    periodStartFromClient != null && periodStartFromClient.trim() !== ""
+      ? periodStartFromClient.trim()
+      : formatDateLocal(start);
 
   const { data: existing } = await supabase
     .from("check_ins")
     .select("checked_in_at, period_start")
     .eq("challenge_id", challengeId)
     .eq("user_id", user.id);
-  const alreadyCheckedIn = (existing ?? []).some((row) =>
-    row.period_start != null
-      ? row.period_start === periodStartDate
-      : isInPeriod(new Date(row.checked_in_at), start, end)
-  );
+  const periodStartNorm = periodStartDate.slice(0, 10);
+  const useClientPeriod = periodStartFromClient != null && periodStartFromClient.trim() !== "";
+  const alreadyCheckedIn = (existing ?? []).some((row) => {
+    if (row.period_start != null) {
+      const rowNorm = String(row.period_start).trim().slice(0, 10);
+      if (rowNorm.length >= 10 && rowNorm === periodStartNorm) return true;
+    }
+    if (!useClientPeriod)
+      return isInPeriod(new Date(row.checked_in_at), start, end);
+    return false;
+  });
   if (alreadyCheckedIn) return { error: new Error("Already checked in for this period") };
 
   const { error } = await supabase.from("check_ins").insert({
@@ -249,15 +255,49 @@ export async function checkIn(
 }
 
 /**
- * Mark challenge as completed if end_date has passed. Call when loading detail.
+ * Single source of truth: does the current user have a check_ins row for this challenge and period_start?
+ * Accepts both local and UTC period strings so we find rows stored in either format (legacy trigger used UTC).
+ */
+export async function hasCheckInForPeriod(
+  challengeId: string,
+  periodStartStrLocal: string,
+  periodStartStrUtc?: string
+): Promise<{ hasCheckIn: boolean; error?: Error }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { hasCheckIn: false, error: new Error("Not authenticated") };
+  const localNorm = periodStartStrLocal.trim().slice(0, 10);
+  if (localNorm.length < 10) return { hasCheckIn: false };
+  const candidates = [localNorm];
+  if (periodStartStrUtc != null) {
+    const utcNorm = periodStartStrUtc.trim().slice(0, 10);
+    if (utcNorm.length >= 10 && !candidates.includes(utcNorm)) candidates.push(utcNorm);
+  }
+  const { data, error } = await supabase
+    .from("check_ins")
+    .select("id")
+    .eq("challenge_id", challengeId)
+    .eq("user_id", user.id)
+    .in("period_start", candidates)
+    .limit(1)
+    .maybeSingle();
+  if (error) return { hasCheckIn: false, error };
+  return { hasCheckIn: data != null };
+}
+
+/**
+ * Mark challenge as completed the day after end_date (e.g. 3/1–3/3 completes on 3/4).
+ * Uses local date so it matches the user's calendar.
  */
 export async function ensureChallengeStatus(challengeId: string) {
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const todayLocal = formatDateLocal(new Date());
   await supabase
     .from("challenges")
     .update({ status: "completed" })
     .eq("id", challengeId)
-    .lt("end_date", today)
+    .lt("end_date", todayLocal)
     .eq("status", "open");
 }

@@ -6,7 +6,7 @@ import {
   getCurrentUserProfile,
   isParticipant,
 } from "@/lib/db/challenges";
-import { countPeriods, formatDateForDb, getCurrentPeriodBounds, isInPeriod, CADENCE_DAYS } from "@/lib/cadence";
+import { countPeriods, formatDateLocal, getCurrentPeriodBounds, isInPeriod, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -57,7 +57,7 @@ export default async function ChallengeDetailPage({
     challenge.cadence as Cadence,
     challenge.start_date
   );
-  const currentPeriodStartStr = formatDateForDb(periodStart);
+  const currentPeriodStartStr = formatDateLocal(periodStart);
   const alreadyCheckedInThisPeriod = userCheckIns.some((c) =>
     c.period_start != null
       ? c.period_start === currentPeriodStartStr
@@ -86,7 +86,7 @@ export default async function ChallengeDetailPage({
       : !hasStarted
         ? challenge.start_date
         : nextPeriodStart
-          ? nextPeriodStart.toISOString().slice(0, 10)
+          ? formatDateLocal(nextPeriodStart)
           : null;
   const totalCommittedCents =
     (challenge.amount_cents ?? 0) * (participants?.length ?? 0);

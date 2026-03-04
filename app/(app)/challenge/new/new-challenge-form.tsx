@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { formatDateLocal } from "@/lib/cadence";
 
 const CADENCE_OPTIONS = [
   { value: "day", label: "Every day" },
@@ -193,5 +194,5 @@ function computeEndDate(
   };
   const d = new Date(startDateStr + "T00:00:00");
   d.setDate(d.getDate() + length * days[cadence] - 1);
-  return d.toISOString().slice(0, 10);
+  return formatDateLocal(d);
 }

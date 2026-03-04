@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { checkInAction } from "./actions";
+import { checkInAction, getHasCheckInForPeriodAction } from "./actions";
 import { getCurrentPeriodBounds, countPeriods, formatDateForDb, formatDateLocal, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 
@@ -65,52 +65,75 @@ export default function ChallengeDetail({
   const [deleting, setDeleting] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasCheckInFromDb, setHasCheckInFromDb] = useState<boolean | null>(null);
 
   const isCreator = challenge.creator_id === currentUserId;
   const isCompleted = challenge.status === "completed";
   const cadence = challenge.cadence as Cadence;
 
-  // For daily, use client-local period so counts match user's calendar.
-  const localAlreadyCheckedInThisPeriod = useMemo(() => {
-    if (cadence !== "day" || isInviteView) return false;
+  const { currentPeriodStartStr, currentPeriodStartUtc } = useMemo(() => {
+    if (isInviteView) return { currentPeriodStartStr: "", currentPeriodStartUtc: undefined as string | undefined };
     const now = new Date();
-    const { start, end } = getCurrentPeriodBounds(now, "day", challenge.start_date);
-    const currentPeriodStartStr = formatDateLocal(start);
-    const userIns = checkIns.filter((c) => c.user_id === currentUserId);
-    return userIns.some((c) =>
-      c.period_start != null
-        ? c.period_start === currentPeriodStartStr
-        : (() => {
-            const t = new Date(c.checked_in_at).getTime();
-            return t >= start.getTime() && t <= end.getTime();
-          })()
-    );
-  }, [cadence, isInviteView, checkIns, currentUserId, challenge.start_date]);
+    const { start } = getCurrentPeriodBounds(now, cadence, challenge.start_date);
+    return {
+      currentPeriodStartStr: formatDateLocal(start),
+      currentPeriodStartUtc: formatDateForDb(start),
+    };
+  }, [cadence, isInviteView, challenge.start_date]);
 
+  useEffect(() => {
+    if (isInviteView || !currentPeriodStartStr) return;
+    let cancelled = false;
+    getHasCheckInForPeriodAction(challenge.id, currentPeriodStartStr, currentPeriodStartUtc).then(
+      ({ hasCheckIn }) => {
+        if (!cancelled) setHasCheckInFromDb(hasCheckIn);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [challenge.id, currentPeriodStartStr, currentPeriodStartUtc, isInviteView]);
+
+  const localAlreadyCheckedInThisPeriod = useMemo(() => {
+    if (hasCheckInFromDb !== null) return hasCheckInFromDb;
+    if (isInviteView) return false;
+    const now = new Date();
+    const { start, end } = getCurrentPeriodBounds(now, cadence, challenge.start_date);
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    const userIns = checkIns.filter((c) => c.user_id === currentUserId);
+    return userIns.some((c) => {
+      if (c.period_start != null) {
+        const normalized = String(c.period_start).trim().slice(0, 10);
+        if (normalized.length >= 10 && normalized === currentPeriodStartStr) return true;
+      }
+      const t = new Date(c.checked_in_at).getTime();
+      return t >= startMs && t <= endMs;
+    });
+  }, [hasCheckInFromDb, cadence, isInviteView, checkIns, currentUserId, challenge.start_date, currentPeriodStartStr]);
+
+  // Check-ins left using user's local period.
   const localCheckInsLeft = useMemo(() => {
-    if (cadence !== "day" || isInviteView || !hasStarted) return undefined;
+    if (isInviteView || !hasStarted) return undefined;
     const startDate = new Date(challenge.start_date + "T00:00:00");
     startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(challenge.end_date + "T00:00:00");
     endDate.setHours(23, 59, 59, 999);
     const now = new Date();
-    const { start: periodStart, end: periodEnd } = getCurrentPeriodBounds(now, "day", challenge.start_date);
-    const periodDays = 1;
+    const { start: periodStart } = getCurrentPeriodBounds(now, cadence, challenge.start_date);
+    const periodDays = CADENCE_DAYS[cadence];
     const nextPeriodStart = new Date(periodStart);
     nextPeriodStart.setDate(nextPeriodStart.getDate() + periodDays);
-    const alreadyCheckedIn = localAlreadyCheckedInThisPeriod;
-    return alreadyCheckedIn
-      ? countPeriods(nextPeriodStart, endDate, "day")
-      : countPeriods(periodStart, endDate, "day");
+    return localAlreadyCheckedInThisPeriod
+      ? countPeriods(nextPeriodStart, endDate, cadence)
+      : countPeriods(periodStart, endDate, cadence);
   }, [cadence, isInviteView, hasStarted, challenge.start_date, challenge.end_date, localAlreadyCheckedInThisPeriod]);
 
-  const effectiveAlreadyCheckedInThisPeriod =
-    cadence === "day" ? localAlreadyCheckedInThisPeriod : alreadyCheckedInThisPeriod;
-  const hasCheckedInThisPeriod = effectiveAlreadyCheckedInThisPeriod || justCheckedIn;
+  const hasCheckedInThisPeriod = localAlreadyCheckedInThisPeriod || justCheckedIn;
   const canCheckIn =
     hasStarted && !isCompleted && !hasCheckedInThisPeriod && !isInviteView;
   const effectiveCheckInsLeft =
-    cadence === "day" && localCheckInsLeft !== undefined ? localCheckInsLeft : checkInsLeft;
+    localCheckInsLeft !== undefined ? localCheckInsLeft : checkInsLeft;
 
   // On invite view, compute join eligibility in user's local timezone so the button state matches their calendar.
   const inviteJoinState = useMemo(() => {
@@ -170,7 +193,7 @@ export default function ChallengeDetail({
     for (let i = 0; i < N; i++) {
       const p = new Date(startDate);
       p.setDate(p.getDate() + i * periodDays);
-      validPeriodStarts.add(c === "day" ? formatDateLocal(p) : formatDateForDb(p));
+      validPeriodStarts.add(formatDateLocal(p));
     }
     const userIns = checkIns.filter((c) => c.user_id === currentUserId);
     let count = 0;
@@ -203,7 +226,7 @@ export default function ChallengeDetail({
     for (let i = 0; i < N; i++) {
       const p = new Date(startDate);
       p.setDate(p.getDate() + i * periodDays);
-      validPeriodStarts.add(c === "day" ? formatDateLocal(p) : formatDateForDb(p));
+      validPeriodStarts.add(formatDateLocal(p));
     }
     const map = new Map<string, number>();
     for (const participant of participants) {
@@ -248,24 +271,25 @@ export default function ChallengeDetail({
     setError(null);
     setCheckingIn(true);
     setJustCheckedIn(true);
-    const periodStartForDaily =
-      cadence === "day" ? formatDateLocal(new Date()) : undefined;
-    const { error: actionError } = await checkInAction(challenge.id, periodStartForDaily);
+    const { start } = getCurrentPeriodBounds(new Date(), cadence, challenge.start_date);
+    const periodStartStr = formatDateLocal(start);
+    const { error: actionError } = await checkInAction(challenge.id, periodStartStr);
     if (actionError) {
       setJustCheckedIn(false);
       setError(actionError);
     } else {
+      setHasCheckInFromDb(true);
       router.refresh();
     }
     setCheckingIn(false);
   }
 
-  // Clear optimistic "just checked in" when server/local confirms already checked in this period.
+  // Clear optimistic "just checked in" when refresh shows a check-in for this period.
   useEffect(() => {
-    if (justCheckedIn && effectiveAlreadyCheckedInThisPeriod) {
+    if (justCheckedIn && localAlreadyCheckedInThisPeriod) {
       setJustCheckedIn(false);
     }
-  }, [justCheckedIn, effectiveAlreadyCheckedInThisPeriod]);
+  }, [justCheckedIn, localAlreadyCheckedInThisPeriod]);
 
   async function handleJoin() {
     const allowed = isInviteView ? inviteJoinState?.canJoin : canJoin;
