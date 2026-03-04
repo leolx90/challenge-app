@@ -263,8 +263,11 @@ export default function ChallengeDetail({
     if (periodDays <= 0) return null;
     const next = new Date(periodStart);
     next.setDate(next.getDate() + periodDays);
+    const endDate = new Date(challenge.end_date + "T00:00:00");
+    endDate.setHours(0, 0, 0, 0);
+    if (next.getTime() > endDate.getTime()) return "N/A";
     return next.toLocaleDateString(undefined, { dateStyle: "medium" });
-  }, [isCompleted, hasStarted, challenge.start_date, challenge.cadence]);
+  }, [isCompleted, hasStarted, challenge.start_date, challenge.end_date, challenge.cadence]);
 
   async function doCheckIn() {
     if (!hasStarted || hasCheckedInThisPeriod) return;
