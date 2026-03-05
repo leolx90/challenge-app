@@ -69,6 +69,8 @@ export default function ChallengeDetail({
 
   const isCreator = challenge.creator_id === currentUserId;
   const isCompleted = challenge.status === "completed";
+  const userLocalDate = formatDateLocal(new Date());
+  const challengeEndedForUser = userLocalDate > challenge.end_date;
   const cadence = challenge.cadence as Cadence;
 
   const { currentPeriodStartStr, currentPeriodStartUtc } = useMemo(() => {
@@ -131,7 +133,7 @@ export default function ChallengeDetail({
 
   const hasCheckedInThisPeriod = localAlreadyCheckedInThisPeriod || justCheckedIn;
   const canCheckIn =
-    hasStarted && !isCompleted && !hasCheckedInThisPeriod && !isInviteView;
+    hasStarted && !isCompleted && !challengeEndedForUser && !hasCheckedInThisPeriod && !isInviteView;
   const effectiveCheckInsLeft =
     localCheckInsLeft !== undefined ? localCheckInsLeft : checkInsLeft;
 
@@ -276,7 +278,8 @@ export default function ChallengeDetail({
     setJustCheckedIn(true);
     const { start } = getCurrentPeriodBounds(new Date(), cadence, challenge.start_date);
     const periodStartStr = formatDateLocal(start);
-    const { error: actionError } = await checkInAction(challenge.id, periodStartStr);
+    const clientToday = formatDateLocal(new Date());
+    const { error: actionError } = await checkInAction(challenge.id, clientToday, periodStartStr);
     if (actionError) {
       setJustCheckedIn(false);
       setError(actionError);
@@ -468,6 +471,15 @@ export default function ChallengeDetail({
                 className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500"
               >
                 Check in (challenge hasn’t started yet)
+              </button>
+            )}
+            {!canCheckIn && !isCompleted && !isInviteView && challengeEndedForUser && (
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500"
+              >
+                Challenge has already ended
               </button>
             )}
             {isCreator && (

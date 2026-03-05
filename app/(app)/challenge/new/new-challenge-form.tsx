@@ -181,6 +181,7 @@ export default function NewChallengeForm() {
   );
 }
 
+/** Compute end_date (YYYY-MM-DD) in user's local time. start_date is from input type="date" (local). */
 function computeEndDate(
   startDateStr: string,
   length: number,

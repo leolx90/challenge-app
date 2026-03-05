@@ -4,9 +4,10 @@ import { checkIn as dbCheckIn, hasCheckInForPeriod as dbHasCheckInForPeriod } fr
 
 export async function checkInAction(
   challengeId: string,
+  clientLocalDate: string,
   periodStartFromClient?: string
 ): Promise<{ error: string | null }> {
-  const { error } = await dbCheckIn(challengeId, periodStartFromClient);
+  const { error } = await dbCheckIn(challengeId, clientLocalDate, periodStartFromClient);
   return { error: error?.message ?? null };
 }
 

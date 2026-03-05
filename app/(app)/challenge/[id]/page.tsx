@@ -92,9 +92,9 @@ export default async function ChallengeDetailPage({
     (challenge.amount_cents ?? 0) * (participants?.length ?? 0);
   const totalCheckInCount = checkIns?.length ?? 0;
   const payouts =
-    challenge.status === "completed" && participants
+    participants && checkIns != null
       ? participants.map((p) => {
-          const count = checkIns?.filter((c) => c.user_id === p.user_id).length ?? 0;
+          const count = checkIns.filter((c) => c.user_id === p.user_id).length;
           const payoutCents =
             totalCheckInCount > 0
               ? Math.round((count / totalCheckInCount) * totalCommittedCents)
