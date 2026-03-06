@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { checkInAction, getHasCheckInForPeriodAction } from "./actions";
+import { checkInAction, getHasCheckInForPeriodAction, ensureChallengeStatusAction } from "./actions";
 import { getCurrentPeriodBounds, countPeriods, formatDateForDb, formatDateLocal, CADENCE_DAYS } from "@/lib/cadence";
 import type { Cadence } from "@/lib/cadence";
 
@@ -71,6 +71,7 @@ export default function ChallengeDetail({
   const isCompleted = challenge.status === "completed";
   const userLocalDate = formatDateLocal(new Date());
   const challengeEndedForUser = userLocalDate > challenge.end_date;
+  const effectiveCompleted = isCompleted || challengeEndedForUser;
   const cadence = challenge.cadence as Cadence;
 
   const { currentPeriodStartStr, currentPeriodStartUtc } = useMemo(() => {
@@ -95,6 +96,13 @@ export default function ChallengeDetail({
       cancelled = true;
     };
   }, [challenge.id, currentPeriodStartStr, currentPeriodStartUtc, isInviteView]);
+
+  useEffect(() => {
+    if (isInviteView || !challengeEndedForUser || isCompleted) return;
+    ensureChallengeStatusAction(challenge.id, userLocalDate).then(() => {
+      router.refresh();
+    });
+  }, [challenge.id, challengeEndedForUser, isCompleted, isInviteView, userLocalDate, router]);
 
   const localAlreadyCheckedInThisPeriod = useMemo(() => {
     if (hasCheckInFromDb !== null) return hasCheckInFromDb;
@@ -133,7 +141,7 @@ export default function ChallengeDetail({
 
   const hasCheckedInThisPeriod = localAlreadyCheckedInThisPeriod || justCheckedIn;
   const canCheckIn =
-    hasStarted && !isCompleted && !challengeEndedForUser && !hasCheckedInThisPeriod && !isInviteView;
+    hasStarted && !effectiveCompleted && !hasCheckedInThisPeriod && !isInviteView;
   const effectiveCheckInsLeft =
     localCheckInsLeft !== undefined ? localCheckInsLeft : checkInsLeft;
 
@@ -249,7 +257,7 @@ export default function ChallengeDetail({
 
   // Compute next check-in start in user's local timezone so it matches their calendar (avoids server-UTC off-by-one for daily).
   const nextCheckInStartDisplay = useMemo(() => {
-    if (isCompleted) return null;
+    if (effectiveCompleted) return null;
     if (!hasStarted)
       return new Date(challenge.start_date + "T00:00:00").toLocaleDateString(
         undefined,
@@ -269,7 +277,7 @@ export default function ChallengeDetail({
     endDate.setHours(0, 0, 0, 0);
     if (next.getTime() > endDate.getTime()) return "N/A";
     return next.toLocaleDateString(undefined, { dateStyle: "medium" });
-  }, [isCompleted, hasStarted, challenge.start_date, challenge.end_date, challenge.cadence]);
+  }, [effectiveCompleted, hasStarted, challenge.start_date, challenge.end_date, challenge.cadence]);
 
   async function doCheckIn() {
     if (!hasStarted || hasCheckedInThisPeriod) return;
@@ -455,7 +463,7 @@ export default function ChallengeDetail({
                 {checkingIn ? "Checking in…" : "Check in"}
               </button>
             )}
-            {!canCheckIn && !isCompleted && !isInviteView && hasCheckedInThisPeriod && (
+            {!canCheckIn && !effectiveCompleted && !isInviteView && hasCheckedInThisPeriod && (
               <button
                 type="button"
                 disabled
@@ -464,7 +472,7 @@ export default function ChallengeDetail({
                 Checked in
               </button>
             )}
-            {!canCheckIn && !isCompleted && !isInviteView && !hasStarted && (
+            {!canCheckIn && !effectiveCompleted && !isInviteView && !hasStarted && (
               <button
                 type="button"
                 disabled
@@ -473,7 +481,7 @@ export default function ChallengeDetail({
                 Check in (challenge hasn’t started yet)
               </button>
             )}
-            {!canCheckIn && !isCompleted && !isInviteView && challengeEndedForUser && (
+            {!canCheckIn && !effectiveCompleted && !isInviteView && challengeEndedForUser && (
               <button
                 type="button"
                 disabled
@@ -516,7 +524,7 @@ export default function ChallengeDetail({
             </ul>
           </section>
 
-          {isCompleted && payouts.length > 0 && (
+          {effectiveCompleted && payouts.length > 0 && (
             <section className="border-t pt-4">
               <h2 className="mb-3 text-lg font-semibold text-gray-800">Payouts</h2>
               <ul className="space-y-2">

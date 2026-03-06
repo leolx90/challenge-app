@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { getChallengesForUser } from "@/lib/db/challenges";
+import { getChallengesForUser, ensureOpenChallengesStatusForUser } from "@/lib/db/challenges";
 import SignOutButton from "./sign-out-button";
 import { IconSettings, IconPlus } from "./icons";
+import HomePageSync from "./home-page-sync";
 
 export default async function HomePage({
   username,
 }: {
   username?: string;
 }) {
+  await ensureOpenChallengesStatusForUser();
   const { data: challenges, error } = await getChallengesForUser();
   if (error) {
     return (
@@ -22,6 +24,7 @@ export default async function HomePage({
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      <HomePageSync />
       <div className="mx-auto max-w-2xl">
         {username && (
           <p className="mb-2 text-gray-600">Hello, {username}</p>

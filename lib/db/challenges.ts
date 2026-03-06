@@ -297,11 +297,14 @@ export async function hasCheckInForPeriod(
 }
 
 /**
- * Mark challenge as completed only when UTC date is at least end_date + 2.
- * That way all user timezones have had their end_date and end_date+1 (completion day).
- * Completion is shown in the UI based on user local date (end_date+1) regardless of DB status.
+ * Mark challenge as completed when either:
+ * - clientLocalDate is provided and clientLocalDate > end_date (user's local date past last day), or
+ * - Server UTC date is at least end_date + 2 (so all timezones have had end_date and the day after).
  */
-export async function ensureChallengeStatus(challengeId: string) {
+export async function ensureChallengeStatus(
+  challengeId: string,
+  clientLocalDate?: string
+) {
   const supabase = await createClient();
   const { data: challenge } = await supabase
     .from("challenges")
@@ -310,11 +313,48 @@ export async function ensureChallengeStatus(challengeId: string) {
     .eq("status", "open")
     .single();
   if (!challenge?.end_date) return;
+  const endNorm = challenge.end_date.trim().slice(0, 10);
+  const shouldCompleteByClient =
+    clientLocalDate != null &&
+    clientLocalDate.trim().slice(0, 10).length >= 10 &&
+    clientLocalDate.trim().slice(0, 10) > endNorm;
   const todayUtc = new Date().toISOString().slice(0, 10);
-  if (!isCompletionCutoffReached(todayUtc, challenge.end_date)) return;
+  const shouldCompleteByUtc = isCompletionCutoffReached(todayUtc, challenge.end_date);
+  if (!shouldCompleteByClient && !shouldCompleteByUtc) return;
   await supabase
     .from("challenges")
     .update({ status: "completed" })
     .eq("id", challengeId)
     .eq("status", "open");
+}
+
+/**
+ * Run ensureChallengeStatus for every open challenge the current user participates in.
+ * When clientLocalDate is provided, uses it so challenges are marked completed as soon as
+ * the user's local date is past end_date (not only when UTC reaches end_date + 2).
+ */
+export async function ensureOpenChallengesStatusForUser(clientLocalDate?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: participants } = await supabase
+    .from("challenge_participants")
+    .select("challenge_id")
+    .eq("user_id", user.id);
+  if (!participants?.length) return;
+
+  const ids = participants.map((p) => p.challenge_id);
+  const { data: openChallenges } = await supabase
+    .from("challenges")
+    .select("id")
+    .in("id", ids)
+    .eq("status", "open");
+  if (!openChallenges?.length) return;
+
+  await Promise.all(
+    openChallenges.map((c) => ensureChallengeStatus(c.id, clientLocalDate))
+  );
 }
